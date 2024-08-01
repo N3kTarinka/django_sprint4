@@ -15,7 +15,7 @@ User = get_user_model()
 
 def index(request):
     page_obj = get_published_posts()
-    context = {'page_obj': paginate_queryset(request, page_obj, 
+    context = {'page_obj': paginate_queryset(request, page_obj,
                                              REPRESENTATION_LENGTH)}
     return render(request, 'blog/index.html', context)
 
