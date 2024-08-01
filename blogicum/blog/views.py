@@ -1,23 +1,22 @@
-from blog.forms import CommentForm, PostForm, ProfileUpdateForm
-from blog.models import Category, Comment, Post
-from django.contrib.auth import get_user_model
-from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
-from django.db.models import Count
-from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
+from django.db.models import Count
+from django.shortcuts import get_object_or_404, redirect, render
+
+from blog.forms import CommentForm, PostForm, ProfileUpdateForm
+from blog.models import Category, Comment, Post
 from .constants import REPRESENTATION_LENGTH
-from .utils import get_published_posts
+from .utils import get_published_posts, paginate_queryset
 
 User = get_user_model()
 
 
 def index(request):
     page_obj = get_published_posts()
-    paginator = Paginator(page_obj, REPRESENTATION_LENGTH)
-    page_number = request.GET.get('page')
-    context = {'page_obj': paginator.get_page(page_number)}
+    context = {'page_obj': paginate_queryset(request, page_obj, 
+                                             REPRESENTATION_LENGTH)}
     return render(request, 'blog/index.html', context)
 
 
@@ -52,9 +51,7 @@ def profile(request, username):
     else:
         page_obj = get_published_posts().filter(author=profile_user)
 
-    paginator = Paginator(page_obj, REPRESENTATION_LENGTH)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    page_obj = paginate_queryset(request, page_obj, REPRESENTATION_LENGTH)
 
     return render(request, 'blog/profile.html', {'profile': profile_user,
                                                  'page_obj': page_obj})
@@ -65,9 +62,7 @@ def category_posts(request, category_slug):
                                  is_published=True)
     page_obj = get_published_posts().filter(category__slug=category_slug)
 
-    paginator = Paginator(page_obj, REPRESENTATION_LENGTH)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    page_obj = paginate_queryset(request, page_obj, REPRESENTATION_LENGTH)
 
     return render(request, 'blog/category.html', {'page_obj': page_obj,
                                                   'category': category})
@@ -156,11 +151,10 @@ def delete_comment(request, post_id, comment_id):
 
 @login_required
 def edit_profile(request):
-    profile_user = get_object_or_404(User, username=request.user)
-    form = ProfileUpdateForm(request.POST or None, instance=profile_user)
+    form = ProfileUpdateForm(request.POST or None, instance=request.user)
 
     if form.is_valid():
         form.save()
-        return redirect('blog:profile', username=profile_user.username)
+        return redirect('blog:profile', username=request.user.username)
 
     return render(request, 'blog/user.html', {'form': form})
